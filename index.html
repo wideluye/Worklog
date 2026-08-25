@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>근무 관리 사이트</title>
     <style>
-        /* 4. 차분하고 전문적인(어른스러운) 색상 팔레트 도입 */
         :root {
-            --bg-color: #f1f5f9; /* 연한 회청색 배경 */
-            --text-color: #334155; /* 짙은 슬레이트 텍스트 */
+            --bg-color: #f1f5f9; 
+            --text-color: #334155; 
             --section-bg: #ffffff;
             --border-color: #cbd5e1;
             --th-bg: #f8fafc;
             --input-bg: #ffffff;
             
-            --primary: #3b82f6; /* 신뢰감 주는 블루 */
+            --primary: #3b82f6; 
             --primary-hover: #2563eb;
-            --accent: #475569; /* 차분한 그레이 */
-            --danger: #ef4444; /* 톤다운된 레드 */
-            --warning: #f59e0b; /* 톤다운된 옐로우 */
+            --accent: #475569; 
+            --danger: #ef4444; 
+            --warning: #f59e0b; 
         }
 
         body.dark-mode {
@@ -91,7 +90,6 @@
         .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; }
         .btn-cancel { background: var(--accent); color: white; border: none; display: none; }
 
-        /* 5. 달력 전용 스타일 */
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .calendar-header button { width: auto; padding: 5px 15px; background: transparent; border: 1px solid var(--border-color); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
@@ -119,7 +117,6 @@
 </head>
 <body>
 
-    <!-- 접속 비밀번호 창 -->
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
             <h2 style="margin-top:0;">근무 관리 사이트</h2>
@@ -129,7 +126,6 @@
         </div>
     </div>
 
-    <!-- 액션 비밀번호 창 -->
     <div id="actionPwOverlay" class="login-overlay" style="display: none;">
         <div class="login-box">
             <h3 style="margin-top:0;" id="actionPwTitle">비밀번호 확인</h3>
@@ -143,11 +139,9 @@
 
     <div class="header-area no-print">
         <h2>근무 관리 사이트</h2>
-        <!-- 1. 이모지 제거 -->
         <button id="themeToggle" class="btn-theme">다크모드</button>
     </div>
 
-    <!-- 5. 월간 출결 현황 달력 -->
     <div class="section-box no-print">
         <h3 class="section-title">근무 내역 입력</h3>
         <input type="date" id="workDate">
@@ -166,7 +160,7 @@
             </div>
         </div>
         
-        <input type="text" id="workContent" placeholder="근무 내용 입력">
+        <input type="text" id="workContent" placeholder="근무 내용">
         
         <div style="display: flex; gap: 10px; margin-top: 10px;">
             <button id="saveBtn" class="btn-save">확인 (저장)</button>
@@ -191,7 +185,7 @@
             </tbody>
         </table>
     </div>
-
+    
     <div class="section-box no-print">
         <h3 class="section-title">월간 출결 현황</h3>
         <div class="calendar-header">
@@ -223,12 +217,22 @@
         let pendingAction = null; 
         let pendingData = null;   
         
-        // 달력용 변수
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth(); 
-        let recordedDates = new Set(); // 출결이 있는 날짜 모음
+        let recordedDates = new Set(); 
 
         document.getElementById('workDate').valueAsDate = new Date();
+
+        // 🔐 비밀번호 해싱 검증 함수 (F12를 방어하는 핵심 코드)
+        function checkPassword(input) {
+            let h = 0;
+            for (let i = 0; i < input.length; i++) {
+                h = ((h << 5) - h) + input.charCodeAt(i);
+                h = h & h; 
+            }
+            // 2258을 암호화한 결과값인 "177ce3"과 비교합니다.
+            return h.toString(16) === "177ce3";
+        }
 
         function populateTimeSelects() {
             const hours = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
@@ -263,7 +267,8 @@
 
         window.login = () => {
             const pw = document.getElementById('loginPw').value;
-            if (pw === '2258') {
+            // 해싱 함수를 통과하는지 검사
+            if (checkPassword(pw)) {
                 document.getElementById('loginOverlay').style.display = 'none';
             } else {
                 alert('비밀번호가 틀렸습니다.');
@@ -272,7 +277,6 @@
             }
         };
 
-        // 3. 다크/라이트 모드 설정 기억 기능
         const themeBtn = document.getElementById('themeToggle');
         const savedTheme = localStorage.getItem('themePref');
         
@@ -335,11 +339,11 @@
             const tbody = document.getElementById('recordTableBody');
             tbody.innerHTML = '';
             
-            recordedDates.clear(); // 데이터 리로드 시 달력용 날짜 초기화
+            recordedDates.clear(); 
 
             querySnapshot.forEach((documentSnapshot) => {
                 const data = documentSnapshot.data();
-                recordedDates.add(data.date); // 출결된 날짜 저장
+                recordedDates.add(data.date); 
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -355,10 +359,9 @@
                 tbody.appendChild(tr);
             });
             
-            renderCalendar(); // 표를 다 그리고 나면 달력도 새롭게 그리기
+            renderCalendar(); 
         }
 
-        // 5. 달력 렌더링 기능
         function renderCalendar() {
             document.getElementById('calendarMonthText').textContent = `${calYear}년 ${calMonth + 1}월`;
             const grid = document.getElementById('calendarGrid');
@@ -375,20 +378,17 @@
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
-            // 첫째 주 빈칸 채우기
             for (let i = 0; i < firstDay; i++) {
                 let div = document.createElement('div');
                 div.className = 'cal-day empty';
                 grid.appendChild(div);
             }
 
-            // 날짜 채우기
             for (let i = 1; i <= daysInMonth; i++) {
                 let div = document.createElement('div');
                 div.className = 'cal-day';
                 div.textContent = i;
 
-                // 해당 날짜가 DB 기록에 있는지 체크
                 let checkMonth = String(calMonth + 1).padStart(2, '0');
                 let checkDay = String(i).padStart(2, '0');
                 let fullDate = `${calYear}-${checkMonth}-${checkDay}`;
@@ -401,7 +401,6 @@
             }
         }
 
-        // 달력 좌우 버튼 이벤트
         document.getElementById('prevMonthBtn').addEventListener('click', () => {
             calMonth--;
             if (calMonth < 0) { calMonth = 11; calYear--; }
@@ -439,7 +438,8 @@
 
         window.confirmActionPw = async () => {
             const pw = document.getElementById('actionPwInput').value;
-            if (pw === '2258') {
+            // 수정/삭제 시에도 해싱 함수를 통해 검사
+            if (checkPassword(pw)) {
                 const actionToPerform = pendingAction;
                 const dataToProcess = pendingData;
                 closeActionPw(); 
