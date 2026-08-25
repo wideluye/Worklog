@@ -5,28 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>근무 관리 사이트</title>
     <style>
+        /* 4. 차분하고 전문적인(어른스러운) 색상 팔레트 도입 */
         :root {
-            --bg-color: #ffffff;
-            --text-color: #333333;
-            --section-bg: #f4f4f4;
-            --border-color: #ccc;
-            --th-bg: #eee;
+            --bg-color: #f1f5f9; /* 연한 회청색 배경 */
+            --text-color: #334155; /* 짙은 슬레이트 텍스트 */
+            --section-bg: #ffffff;
+            --border-color: #cbd5e1;
+            --th-bg: #f8fafc;
             --input-bg: #ffffff;
+            
+            --primary: #3b82f6; /* 신뢰감 주는 블루 */
+            --primary-hover: #2563eb;
+            --accent: #475569; /* 차분한 그레이 */
+            --danger: #ef4444; /* 톤다운된 레드 */
+            --warning: #f59e0b; /* 톤다운된 옐로우 */
         }
 
         body.dark-mode {
-            --bg-color: #121212;
-            --text-color: #e0e0e0;
-            --section-bg: #1e1e1e;
-            --border-color: #444;
-            --th-bg: #333;
-            --input-bg: #2c2c2c;
+            --bg-color: #0f172a; 
+            --text-color: #f8fafc;
+            --section-bg: #1e293b;
+            --border-color: #334155;
+            --th-bg: #0f172a;
+            --input-bg: #0f172a;
+            
+            --primary: #3b82f6;
+            --accent: #64748b;
         }
 
         body { 
-            font-family: 'Malgun Gothic', sans-serif; 
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif; 
             padding: 20px; 
-            max-width: 800px; 
+            max-width: 900px; 
             margin: auto; 
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -35,45 +45,64 @@
 
         .login-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5); z-index: 9999;
+            background-color: rgba(0,0,0,0.6); z-index: 9999;
             display: flex; justify-content: center; align-items: center;
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(4px);
         }
         #loginOverlay { background-color: var(--bg-color); backdrop-filter: none; }
 
         .login-box {
             background: var(--section-bg); padding: 40px; border-radius: 12px;
             text-align: center; border: 1px solid var(--border-color);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            width: 300px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            width: 320px;
         }
 
-        .header-area { display: flex; justify-content: space-between; align-items: center; }
-        .input-section { background: var(--section-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
+        .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-area h2 { margin: 0; font-weight: 600; color: var(--text-color); }
         
-        .time-inputs { display: flex; gap: 10px; margin: 5px 0; align-items: center; }
+        .section-box { 
+            background: var(--section-bg); padding: 25px; border-radius: 12px; 
+            margin-bottom: 25px; border: 1px solid var(--border-color); 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .section-title { font-size: 1.1em; font-weight: bold; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        
+        .time-inputs { display: flex; gap: 10px; margin: 10px 0; align-items: center; }
         .time-select-group { display: flex; gap: 5px; flex: 1; }
         
         input, select, button { 
-            padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; 
-            border: 1px solid var(--border-color); border-radius: 4px;
+            padding: 10px 12px; margin: 5px 0; width: 100%; box-sizing: border-box; 
+            border: 1px solid var(--border-color); border-radius: 6px;
             background-color: var(--input-bg); color: var(--text-color);
+            outline: none; transition: border-color 0.2s;
         }
+        input:focus, select:focus { border-color: var(--primary); }
         .time-select-group select { padding: 8px; }
 
-        button { cursor: pointer; transition: transform 0.1s, filter 0.1s; }
-        button:active { transform: scale(0.97); filter: brightness(0.9); } 
+        button { cursor: pointer; transition: all 0.2s; font-weight: 500; }
+        button:active { transform: scale(0.98); } 
 
-        .btn-save { background: #28a745; color: white; border: none; font-weight: bold; }
-        .btn-print { background: #007bff; color: white; border: none; font-weight: bold; }
-        .btn-theme { background: #6c757d; color: white; border: none; width: auto; padding: 10px 20px; border-radius: 20px; }
-        .btn-edit { background: #ffc107; color: black; border: none; padding: 5px 10px; border-radius: 4px; margin-right: 5px; }
-        .btn-delete { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; }
-        .btn-cancel { background: #6c757d; color: white; border: none; font-weight: bold; display: none; }
+        .btn-save { background: var(--primary); color: white; border: none; }
+        .btn-save:hover { background: var(--primary-hover); }
+        .btn-print { background: var(--accent); color: white; border: none; }
+        .btn-theme { background: transparent; color: var(--text-color); border: 1px solid var(--border-color); width: auto; padding: 8px 16px; border-radius: 20px; font-size: 0.9em; }
+        .btn-edit { background: var(--warning); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; margin-right: 5px; font-size: 0.85em; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; }
+        .btn-cancel { background: var(--accent); color: white; border: none; display: none; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
-        th { background: var(--th-bg); white-space: nowrap; }
+        /* 5. 달력 전용 스타일 */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-header button { width: auto; padding: 5px 15px; background: transparent; border: 1px solid var(--border-color); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
+        .cal-day-header { font-weight: bold; color: var(--accent); font-size: 0.85em; padding-bottom: 5px; }
+        .cal-day { padding: 12px 0; border-radius: 8px; background: var(--th-bg); border: 1px solid var(--border-color); font-size: 0.95em; }
+        .cal-day.recorded { background: var(--primary); color: white; font-weight: bold; border: none; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
+        .cal-day.empty { background: transparent; border: none; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95em; }
+        th, td { border: 1px solid var(--border-color); padding: 12px 10px; text-align: center; }
+        th { background: var(--th-bg); white-space: nowrap; font-weight: 600; }
         
         .print-only { display: none; }
 
@@ -81,6 +110,7 @@
             .no-print { display: none !important; }
             .print-only { display: table-cell !important; }
             body { padding: 0; background-color: white !important; color: black !important; } 
+            .section-box { border: none; box-shadow: none; padding: 0; margin-bottom: 20px; }
             table { border: 2px solid #000; }
             th, td { border: 1px solid #000; }
             th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
@@ -89,16 +119,17 @@
 </head>
 <body>
 
+    <!-- 접속 비밀번호 창 -->
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
             <h2 style="margin-top:0;">근무 관리 사이트</h2>
-            <p style="margin-bottom:20px; font-size:14px; color:gray;">접속하려면 비밀번호를 입력하세요.</p>
+            <p style="margin-bottom:20px; font-size:14px; color:var(--accent);">접속하려면 비밀번호를 입력하세요.</p>
             <input type="password" id="loginPw" placeholder="비밀번호 입력" onkeypress="if(event.key==='Enter') login()">
             <button onclick="login()" class="btn-save" style="margin-top:10px;">접속하기</button>
         </div>
     </div>
 
-    <!-- 수정/삭제 시 나타나는 비밀번호 확인 창 -->
+    <!-- 액션 비밀번호 창 -->
     <div id="actionPwOverlay" class="login-overlay" style="display: none;">
         <div class="login-box">
             <h3 style="margin-top:0;" id="actionPwTitle">비밀번호 확인</h3>
@@ -112,10 +143,23 @@
 
     <div class="header-area no-print">
         <h2>근무 관리 사이트</h2>
+        <!-- 1. 이모지 제거 -->
         <button id="themeToggle" class="btn-theme">다크모드</button>
     </div>
 
-    <div class="input-section no-print">
+    <!-- 5. 월간 출결 현황 달력 -->
+    <div class="section-box no-print">
+        <h3 class="section-title">월간 출결 현황</h3>
+        <div class="calendar-header">
+            <button id="prevMonthBtn">&lt; 이전</button>
+            <strong id="calendarMonthText" style="font-size: 1.1em;"></strong>
+            <button id="nextMonthBtn">다음 &gt;</button>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+
+    <div class="section-box no-print">
+        <h3 class="section-title">근무 내역 입력</h3>
         <input type="date" id="workDate">
         
         <div class="time-inputs">
@@ -124,7 +168,7 @@
                 <select id="startHour" title="시"></select>
                 <select id="startMinute" title="분"></select>
             </div>
-            <span>~</span>
+            <span style="color: var(--accent);">~</span>
             <div class="time-select-group">
                 <select id="endAmPm"><option value="오전">오전</option><option value="오후">오후</option></select>
                 <select id="endHour" title="시"></select>
@@ -132,27 +176,31 @@
             </div>
         </div>
         
-        <input type="text" id="workContent" placeholder="근무 내용">
+        <input type="text" id="workContent" placeholder="근무 내용 입력 (예: 폐플라스틱 섬유 혼입 실험)">
         
-        <button id="saveBtn" class="btn-save">확인 (저장)</button>
-        <button id="cancelEditBtn" class="btn-cancel">수정 취소</button>
-        <button onclick="window.print()" class="btn-print">내역 인쇄하기</button>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="saveBtn" class="btn-save">확인 (저장)</button>
+            <button id="cancelEditBtn" class="btn-cancel">수정 취소</button>
+            <button onclick="window.print()" class="btn-print">내역 인쇄하기</button>
+        </div>
     </div>
 
-    <h2>근무 출결 대장</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>날짜</th>
-                <th>근무 시간</th>
-                <th>근무 내용</th>
-                <th class="print-only" style="width: 120px;">연구책임자 확인</th>
-                <th class="no-print">관리</th>
-            </tr>
-        </thead>
-        <tbody id="recordTableBody">
-        </tbody>
-    </table>
+    <div class="section-box" style="padding-top: 10px;">
+        <h3 class="section-title no-print" style="margin-top: 15px;">근무 출결 대장</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>날짜</th>
+                    <th>근무 시간</th>
+                    <th>근무 내용</th>
+                    <th class="print-only" style="width: 120px;">연구책임자 확인</th>
+                    <th class="no-print" style="width: 110px;">관리</th>
+                </tr>
+            </thead>
+            <tbody id="recordTableBody">
+            </tbody>
+        </table>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -174,6 +222,11 @@
         let currentEditId = null;
         let pendingAction = null; 
         let pendingData = null;   
+        
+        // 달력용 변수
+        let calYear = new Date().getFullYear();
+        let calMonth = new Date().getMonth(); 
+        let recordedDates = new Set(); // 출결이 있는 날짜 모음
 
         document.getElementById('workDate').valueAsDate = new Date();
 
@@ -200,7 +253,6 @@
             document.getElementById('startAmPm').value = '오전';
             document.getElementById('startHour').value = '08';
             document.getElementById('startMinute').value = '30';
-            
             document.getElementById('endAmPm').value = '오후';
             document.getElementById('endHour').value = '06';
             document.getElementById('endMinute').value = '00';
@@ -220,13 +272,23 @@
             }
         };
 
+        // 3. 다크/라이트 모드 설정 기억 기능
         const themeBtn = document.getElementById('themeToggle');
+        const savedTheme = localStorage.getItem('themePref');
+        
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeBtn.textContent = '라이트모드';
+        }
+
         themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
             if (document.body.classList.contains('dark-mode')) {
                 themeBtn.textContent = '라이트모드';
+                localStorage.setItem('themePref', 'dark');
             } else {
                 themeBtn.textContent = '다크모드';
+                localStorage.setItem('themePref', 'light');
             }
         });
 
@@ -253,13 +315,11 @@
                 if (currentEditId) {
                     const docRef = doc(db, "workRecords", currentEditId);
                     await updateDoc(docRef, { date: date, hours: hours, content: content });
-                    alert("성공적으로 수정되었습니다!");
                     resetInputForm();
                 } else {
                     await addDoc(collection(db, "workRecords"), {
                         date: date, hours: hours, content: content, timestamp: new Date()
                     });
-                    alert("성공적으로 저장되었습니다!");
                     document.getElementById('workContent').value = ''; 
                 }
                 loadData();
@@ -274,11 +334,14 @@
             const querySnapshot = await getDocs(q);
             const tbody = document.getElementById('recordTableBody');
             tbody.innerHTML = '';
+            
+            recordedDates.clear(); // 데이터 리로드 시 달력용 날짜 초기화
 
             querySnapshot.forEach((documentSnapshot) => {
                 const data = documentSnapshot.data();
-                const tr = document.createElement('tr');
+                recordedDates.add(data.date); // 출결된 날짜 저장
                 
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${data.date}</td>
                     <td>${data.hours}</td>
@@ -291,7 +354,64 @@
                 `;
                 tbody.appendChild(tr);
             });
+            
+            renderCalendar(); // 표를 다 그리고 나면 달력도 새롭게 그리기
         }
+
+        // 5. 달력 렌더링 기능
+        function renderCalendar() {
+            document.getElementById('calendarMonthText').textContent = `${calYear}년 ${calMonth + 1}월`;
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            days.forEach(d => {
+                let div = document.createElement('div');
+                div.className = 'cal-day-header';
+                div.textContent = d;
+                grid.appendChild(div);
+            });
+
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+            // 첫째 주 빈칸 채우기
+            for (let i = 0; i < firstDay; i++) {
+                let div = document.createElement('div');
+                div.className = 'cal-day empty';
+                grid.appendChild(div);
+            }
+
+            // 날짜 채우기
+            for (let i = 1; i <= daysInMonth; i++) {
+                let div = document.createElement('div');
+                div.className = 'cal-day';
+                div.textContent = i;
+
+                // 해당 날짜가 DB 기록에 있는지 체크
+                let checkMonth = String(calMonth + 1).padStart(2, '0');
+                let checkDay = String(i).padStart(2, '0');
+                let fullDate = `${calYear}-${checkMonth}-${checkDay}`;
+
+                if (recordedDates.has(fullDate)) {
+                    div.classList.add('recorded');
+                }
+
+                grid.appendChild(div);
+            }
+        }
+
+        // 달력 좌우 버튼 이벤트
+        document.getElementById('prevMonthBtn').addEventListener('click', () => {
+            calMonth--;
+            if (calMonth < 0) { calMonth = 11; calYear--; }
+            renderCalendar();
+        });
+        document.getElementById('nextMonthBtn').addEventListener('click', () => {
+            calMonth++;
+            if (calMonth > 11) { calMonth = 0; calYear++; }
+            renderCalendar();
+        });
 
         window.editRecordBtn = (id, date, hours, content) => {
             pendingAction = 'edit';
@@ -317,18 +437,13 @@
             pendingData = null;
         };
 
-        // --- 버그가 수정된 부분! ---
         window.confirmActionPw = async () => {
             const pw = document.getElementById('actionPwInput').value;
             if (pw === '2258') {
-                // 까먹기 전에 무슨 작업이었는지 변수에 따로 저장해두기
                 const actionToPerform = pendingAction;
                 const dataToProcess = pendingData;
-                
-                // 창 닫고 초기화
                 closeActionPw(); 
                 
-                // 저장해둔 작업 꺼내서 실행!
                 if (actionToPerform === 'edit') {
                     executeEdit(dataToProcess);
                 } else if (actionToPerform === 'delete') {
@@ -355,10 +470,7 @@
 
             currentEditId = data.id;
             document.getElementById('saveBtn').textContent = '수정 완료';
-            document.getElementById('saveBtn').style.background = '#ffc107';
-            document.getElementById('saveBtn').style.color = 'black';
             document.getElementById('cancelEditBtn').style.display = 'block'; 
-            
             window.scrollTo(0, 0); 
         }
 
@@ -404,12 +516,9 @@
         function resetInputForm() {
             currentEditId = null;
             document.getElementById('saveBtn').textContent = '확인 (저장)';
-            document.getElementById('saveBtn').style.background = '#28a745';
-            document.getElementById('saveBtn').style.color = 'white';
             document.getElementById('cancelEditBtn').style.display = 'none';
             document.getElementById('workContent').value = '';
             document.getElementById('workDate').valueAsDate = new Date();
-            
             setDefaultTime();
         }
 
