@@ -39,7 +39,6 @@
             display: flex; justify-content: center; align-items: center;
             backdrop-filter: blur(2px);
         }
-        /* 메인 로그인 화면은 배경 꽉 차게 덮기 */
         #loginOverlay { background-color: var(--bg-color); backdrop-filter: none; }
 
         .login-box {
@@ -90,7 +89,6 @@
 </head>
 <body>
 
-    <!-- 1. 사이트 접속 로그인 창 -->
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
             <h2 style="margin-top:0;">근무 관리 사이트</h2>
@@ -100,7 +98,7 @@
         </div>
     </div>
 
-    <!-- 2. 수정 및 삭제 시 나타나는 비밀번호 확인 창 (숨김 처리됨) -->
+    <!-- 수정/삭제 시 나타나는 비밀번호 확인 창 -->
     <div id="actionPwOverlay" class="login-overlay" style="display: none;">
         <div class="login-box">
             <h3 style="margin-top:0;" id="actionPwTitle">비밀번호 확인</h3>
@@ -153,7 +151,6 @@
             </tr>
         </thead>
         <tbody id="recordTableBody">
-            <!-- 데이터 표시 영역 -->
         </tbody>
     </table>
 
@@ -162,7 +159,6 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 사용자 Firebase 설정값 완벽 적용
         const firebaseConfig = {
             apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
             authDomain: "practice-34277.firebaseapp.com",
@@ -176,12 +172,11 @@
         const db = getFirestore(app);
 
         let currentEditId = null;
-        let pendingAction = null; // 'edit' 또는 'delete' 상태 저장
-        let pendingData = null;   // 처리할 데이터 임시 저장
+        let pendingAction = null; 
+        let pendingData = null;   
 
         document.getElementById('workDate').valueAsDate = new Date();
 
-        // 시/분 드롭다운 목록 생성 함수
         function populateTimeSelects() {
             const hours = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
             const minutes = ['00', '10', '20', '30', '40', '50'];
@@ -201,7 +196,6 @@
             });
         }
         
-        // 기본시간 설정
         function setDefaultTime() {
             document.getElementById('startAmPm').value = '오전';
             document.getElementById('startHour').value = '08';
@@ -215,7 +209,6 @@
         populateTimeSelects();
         setDefaultTime();
 
-        // 메인 로그인 창 확인
         window.login = () => {
             const pw = document.getElementById('loginPw').value;
             if (pw === '2258') {
@@ -237,7 +230,6 @@
             }
         });
 
-        // 저장(확인) 버튼 동작
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const date = document.getElementById('workDate').value;
             const content = document.getElementById('workContent').value;
@@ -301,9 +293,6 @@
             });
         }
 
-        // --- 비밀번호 확인 창 로직 ---
-
-        // 수정 버튼 눌렀을 때 팝업 열기
         window.editRecordBtn = (id, date, hours, content) => {
             pendingAction = 'edit';
             pendingData = { id, date, hours, content };
@@ -313,7 +302,6 @@
             document.getElementById('actionPwInput').focus();
         };
 
-        // 삭제 버튼 눌렀을 때 팝업 열기
         window.deleteRecordBtn = (id) => {
             pendingAction = 'delete';
             pendingData = id;
@@ -323,23 +311,28 @@
             document.getElementById('actionPwInput').focus();
         };
 
-        // 팝업 취소 버튼
         window.closeActionPw = () => {
             document.getElementById('actionPwOverlay').style.display = 'none';
             pendingAction = null;
             pendingData = null;
         };
 
-        // 팝업에서 비밀번호 맞았을 때 처리
+        // --- 버그가 수정된 부분! ---
         window.confirmActionPw = async () => {
             const pw = document.getElementById('actionPwInput').value;
             if (pw === '2258') {
-                closeActionPw(); // 창 먼저 닫기
+                // 까먹기 전에 무슨 작업이었는지 변수에 따로 저장해두기
+                const actionToPerform = pendingAction;
+                const dataToProcess = pendingData;
                 
-                if (pendingAction === 'edit') {
-                    executeEdit(pendingData);
-                } else if (pendingAction === 'delete') {
-                    await executeDelete(pendingData);
+                // 창 닫고 초기화
+                closeActionPw(); 
+                
+                // 저장해둔 작업 꺼내서 실행!
+                if (actionToPerform === 'edit') {
+                    executeEdit(dataToProcess);
+                } else if (actionToPerform === 'delete') {
+                    await executeDelete(dataToProcess);
                 }
             } else {
                 alert("비밀번호가 일치하지 않습니다.");
@@ -348,7 +341,6 @@
             }
         };
 
-        // 실제 수정 모드 돌입 함수
         function executeEdit(data) {
             document.getElementById('workDate').value = data.date;
             document.getElementById('workContent').value = data.content;
@@ -370,7 +362,6 @@
             window.scrollTo(0, 0); 
         }
 
-        // 시간 파싱 함수
         function parseAndSetTime(timeStr, type) {
             let ampm = '오전';
             let hr = '08';
@@ -399,7 +390,6 @@
             document.getElementById(type + 'Minute').value = min;
         }
 
-        // 실제 삭제 실행 함수
         async function executeDelete(id) {
             if(confirm("정말 삭제하시겠습니까?")) {
                 await deleteDoc(doc(db, "workRecords", id));
@@ -407,12 +397,10 @@
             }
         }
 
-        // 수정 취소 버튼
         document.getElementById('cancelEditBtn').addEventListener('click', () => {
             resetInputForm();
         });
 
-        // 폼 초기화 함수
         function resetInputForm() {
             currentEditId = null;
             document.getElementById('saveBtn').textContent = '확인 (저장)';
