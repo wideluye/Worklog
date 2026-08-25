@@ -149,16 +149,6 @@
 
     <!-- 5. 월간 출결 현황 달력 -->
     <div class="section-box no-print">
-        <h3 class="section-title">월간 출결 현황</h3>
-        <div class="calendar-header">
-            <button id="prevMonthBtn">&lt; 이전</button>
-            <strong id="calendarMonthText" style="font-size: 1.1em;"></strong>
-            <button id="nextMonthBtn">다음 &gt;</button>
-        </div>
-        <div id="calendarGrid" class="calendar-grid"></div>
-    </div>
-
-    <div class="section-box no-print">
         <h3 class="section-title">근무 내역 입력</h3>
         <input type="date" id="workDate">
         
@@ -176,7 +166,7 @@
             </div>
         </div>
         
-        <input type="text" id="workContent" placeholder="근무 내용 입력 (예: 폐플라스틱 섬유 혼입 실험)">
+        <input type="text" id="workContent" placeholder="근무 내용 입력">
         
         <div style="display: flex; gap: 10px; margin-top: 10px;">
             <button id="saveBtn" class="btn-save">확인 (저장)</button>
@@ -200,6 +190,16 @@
             <tbody id="recordTableBody">
             </tbody>
         </table>
+    </div>
+
+    <div class="section-box no-print">
+        <h3 class="section-title">월간 출결 현황</h3>
+        <div class="calendar-header">
+            <button id="prevMonthBtn">&lt; 이전</button>
+            <strong id="calendarMonthText" style="font-size: 1.1em;"></strong>
+            <button id="nextMonthBtn">다음 &gt;</button>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
     </div>
 
     <script type="module">
