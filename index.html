@@ -5,32 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>나만의 출결 관리</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-        .input-section { background: #f4f4f4; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-        th { background: #eee; }
+        /* 기본(라이트모드) 색상 변수 설정 */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --section-bg: #f4f4f4;
+            --border-color: #ccc;
+            --th-bg: #eee;
+            --input-bg: #ffffff;
+        }
+
+        /* 다크모드 색상 변수 설정 */
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --section-bg: #1e1e1e;
+            --border-color: #444;
+            --th-bg: #333;
+            --input-bg: #2c2c2c;
+        }
+
+        body { 
+            font-family: 'Malgun Gothic', sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: auto; 
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .header-area { display: flex; justify-content: space-between; align-items: center; }
+        .input-section { background: var(--section-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
         
-        /* 🔥 핵심: 인쇄 버튼 누를 때 적용되는 스타일 */
+        /* 시간 입력칸을 나란히 배치하기 위한 스타일 */
+        .time-inputs { display: flex; gap: 10px; margin: 5px 0; }
+        .time-inputs input { flex: 1; }
+        
+        input, button { 
+            padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; 
+            border: 1px solid var(--border-color); border-radius: 4px;
+            background-color: var(--input-bg); color: var(--text-color);
+        }
+
+        /* 6. 버튼 시각적 클릭 효과 */
+        button { cursor: pointer; transition: transform 0.1s, filter 0.1s; }
+        button:active { transform: scale(0.97); filter: brightness(0.9); } /* 눌렀을 때 살짝 작아지고 어두워짐 */
+
+        .btn-save { background: #28a745; color: white; border: none; font-weight: bold; }
+        .btn-print { background: #007bff; color: white; border: none; font-weight: bold; }
+        .btn-theme { background: #6c757d; color: white; border: none; width: auto; padding: 10px 20px; border-radius: 20px; }
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
+        th { background: var(--th-bg); }
+        
+        /* 인쇄 전용 스타일 */
         @media print {
-            .no-print { display: none !important; } /* 입력창, 인쇄버튼, 삭제버튼 숨김 */
-            body { padding: 0; }
+            .no-print { display: none !important; }
+            body { padding: 0; background-color: white !important; color: black !important; } /* 인쇄 시 다크모드 해제 */
             table { border: 2px solid #000; }
             th, td { border: 1px solid #000; }
+            th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
         }
     </style>
 </head>
 <body>
 
-    <!-- 화면에만 보이고 인쇄할 때는 숨겨지는 입력 영역 -->
+    <div class="header-area no-print">
+        <h2>근무 출결 기록</h2>
+        <!-- 1. 다크모드 버튼 -->
+        <button id="themeToggle" class="btn-theme">🌙 다크모드</button>
+    </div>
+
+    <!-- 입력 영역 -->
     <div class="input-section no-print">
-        <h2>근무 내용 입력</h2>
         <input type="date" id="workDate">
-        <input type="text" id="workHours" placeholder="근무 시간 (예: 8, 또는 09:00~18:00)">
-        <input type="text" id="workContent" placeholder="예: 폐플라스틱 섬유 혼입 콘크리트 폭렬 특성 분석">
-        <button id="saveBtn" style="background: #28a745; color: white; border: none; cursor: pointer;">확인 (저장)</button>
-        <button onclick="window.print()" style="background: #007bff; color: white; border: none; cursor: pointer;">내역 인쇄하기</button>
+        
+        <!-- 3, 4. 근무 시간 시작/끝 분리 및 기본값 설정 -->
+        <div class="time-inputs">
+            <input type="time" id="startTime" value="08:30" title="시작 시간">
+            <span style="display:flex; align-items:center;">~</span>
+            <input type="time" id="endTime" value="18:00" title="종료 시간">
+        </div>
+        
+        <!-- 5. 근무 내용 텍스트 간소화 -->
+        <input type="text" id="workContent" placeholder="근무 내용">
+        
+        <button id="saveBtn" class="btn-save">확인 (저장)</button>
+        <button onclick="window.print()" class="btn-print">내역 인쇄하기</button>
     </div>
 
     <h2>근무 출결 대장</h2>
@@ -40,23 +104,21 @@
                 <th>날짜</th>
                 <th>근무 시간</th>
                 <th>근무 내용</th>
-                <!-- 인쇄 시 공란으로 출력될 칸 -->
                 <th style="width: 120px;">연구책임자 확인</th>
-                <th class="no-print">관리</th> <!-- 수정/삭제 버튼 칸 -->
+                <th class="no-print">관리</th>
             </tr>
         </thead>
         <tbody id="recordTableBody">
-            <!-- 데이터가 여기에 들어옵니다 -->
+            <!-- 데이터 표시 영역 -->
         </tbody>
     </table>
 
-    <!-- Firebase SDK 로드 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, orderBy, query } 
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 🚨 1단계에서 받은 본인의 Firebase 설정값으로 아래 내용을 덮어쓰세요!
+        // 🚨 여기에 발급받으신 본인의 firebaseConfig 코드를 덮어써주세요!
         const firebaseConfig = {
             apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
             authDomain: "practice-34277.firebaseapp.com",
@@ -69,16 +131,34 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 오늘 날짜를 기본으로 세팅
+        document.getElementById('workDate').valueAsDate = new Date();
+
+        // 다크모드 토글 기능
+        const themeBtn = document.getElementById('themeToggle');
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                themeBtn.textContent = '☀️ 라이트모드';
+            } else {
+                themeBtn.textContent = '🌙 다크모드';
+            }
+        });
+
         // 데이터 저장 기능
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const date = document.getElementById('workDate').value;
-            const hours = document.getElementById('workHours').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
             const content = document.getElementById('workContent').value;
 
-            if(!date || !hours || !content) {
+            if(!date || !startTime || !endTime || !content) {
                 alert("모든 내용을 입력해주세요.");
                 return;
             }
+
+            // 시작 시간과 종료 시간을 하나로 합치기
+            const hours = `${startTime} ~ ${endTime}`;
 
             try {
                 await addDoc(collection(db, "workRecords"), {
@@ -87,13 +167,12 @@
                     content: content,
                     timestamp: new Date()
                 });
-                alert("저장되었습니다!");
-                document.getElementById('workDate').value = '';
-                document.getElementById('workHours').value = '';
-                document.getElementById('workContent').value = '';
-                loadData(); // 저장 후 목록 새로고침
+                alert("성공적으로 저장되었습니다!");
+                document.getElementById('workContent').value = ''; // 내용은 비우기
+                loadData();
             } catch (e) {
-                console.error("Error adding document: ", e);
+                console.error("저장 오류: ", e);
+                alert("저장 중 오류가 발생했습니다. Vercel 배포 후 다시 시도해보세요.");
             }
         });
 
@@ -112,16 +191,16 @@
                     <td>${data.date}</td>
                     <td>${data.hours}</td>
                     <td>${data.content}</td>
-                    <td></td> <!-- 연구책임자 확인란 공란 -->
+                    <td></td>
                     <td class="no-print">
-                        <button onclick="deleteRecord('${documentSnapshot.id}')">삭제</button>
+                        <button class="btn-delete" onclick="deleteRecord('${documentSnapshot.id}')">삭제</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // 삭제 기능 (글로벌 함수로 만들기 위해 window 객체에 할당)
+        // 삭제 기능
         window.deleteRecord = async (id) => {
             if(confirm("정말 삭제하시겠습니까?")) {
                 await deleteDoc(doc(db, "workRecords", id));
@@ -129,7 +208,7 @@
             }
         };
 
-        // 페이지 열릴 때 데이터 최초 로드
+        // 초기 데이터 로드
         loadData();
     </script>
 </body>
