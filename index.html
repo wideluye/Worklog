@@ -47,15 +47,16 @@
         .header-area { display: flex; justify-content: space-between; align-items: center; }
         .input-section { background: var(--section-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
         
-        .time-inputs { display: flex; gap: 10px; margin: 5px 0; }
-        .time-inputs input, .time-inputs select { flex: 1; }
+        /* 1. 시간 선택 그룹 스타일 추가 */
+        .time-inputs { display: flex; gap: 10px; margin: 5px 0; align-items: center; }
+        .time-select-group { display: flex; gap: 5px; flex: 1; }
         
-        /* select(드롭다운) 디자인 추가 */
         input, select, button { 
             padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; 
             border: 1px solid var(--border-color); border-radius: 4px;
             background-color: var(--input-bg); color: var(--text-color);
         }
+        .time-select-group select { padding: 8px; } /* 시간 드롭다운은 조금 더 얇게 */
 
         button { cursor: pointer; transition: transform 0.1s, filter 0.1s; }
         button:active { transform: scale(0.97); filter: brightness(0.9); } 
@@ -68,8 +69,9 @@
         .btn-cancel { background: #6c757d; color: white; border: none; font-weight: bold; display: none; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        /* 2. white-space: nowrap; 을 추가하여 글자가 줄바꿈되지 않도록 방지 */
         th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
-        th { background: var(--th-bg); }
+        th { background: var(--th-bg); white-space: nowrap; }
         
         .print-only { display: none; }
 
@@ -96,17 +98,25 @@
 
     <div class="header-area no-print">
         <h2>근무 출결 기록</h2>
-        <button id="themeToggle" class="btn-theme">다크모드</button>
+        <button id="themeToggle" class="btn-theme">🌙 다크모드</button>
     </div>
 
     <div class="input-section no-print">
         <input type="date" id="workDate">
         
-        <!-- 변경: 10분 단위 선택을 강제하는 select 드롭다운으로 교체 -->
+        <!-- 1. 오전/오후, 시, 분을 각각 나누어 선택하도록 변경 -->
         <div class="time-inputs">
-            <select id="startTime" title="시작 시간"></select>
-            <span style="display:flex; align-items:center;">~</span>
-            <select id="endTime" title="종료 시간"></select>
+            <div class="time-select-group">
+                <select id="startAmPm"><option value="오전">오전</option><option value="오후">오후</option></select>
+                <select id="startHour" title="시"></select>
+                <select id="startMinute" title="분"></select>
+            </div>
+            <span>~</span>
+            <div class="time-select-group">
+                <select id="endAmPm"><option value="오전">오전</option><option value="오후">오후</option></select>
+                <select id="endHour" title="시"></select>
+                <select id="endMinute" title="분"></select>
+            </div>
         </div>
         
         <input type="text" id="workContent" placeholder="근무 내용">
@@ -137,7 +147,7 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 알려주신 설정값 완벽 적용
+        // 사용자 Firebase 설정값 (그대로 유지)
         const firebaseConfig = {
             apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
             authDomain: "practice-34277.firebaseapp.com",
@@ -151,33 +161,41 @@
         const db = getFirestore(app);
 
         let currentEditId = null;
-
         document.getElementById('workDate').valueAsDate = new Date();
 
-        // JS 추가: 10분 단위 시간 옵션을 드롭다운에 자동으로 채워주는 함수
-        function generateTimeOptions(selectId, defaultTime) {
-            const selectElement = document.getElementById(selectId);
-            for (let h = 0; h < 24; h++) {
-                for (let m = 0; m < 60; m += 10) {
-                    let hour = h.toString().padStart(2, '0');
-                    let minute = m.toString().padStart(2, '0');
-                    let timeString = `${hour}:${minute}`;
-                    
-                    let option = document.createElement('option');
-                    option.value = timeString;
-                    option.text = timeString;
-                    
-                    if (timeString === defaultTime) {
-                        option.selected = true;
-                    }
-                    selectElement.appendChild(option);
-                }
-            }
+        // 시/분 드롭다운 목록을 생성하는 함수
+        function populateTimeSelects() {
+            const hours = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+            const minutes = ['00', '10', '20', '30', '40', '50'];
+            
+            const startHour = document.getElementById('startHour');
+            const endHour = document.getElementById('endHour');
+            const startMinute = document.getElementById('startMinute');
+            const endMinute = document.getElementById('endMinute');
+
+            hours.forEach(h => {
+                startHour.add(new Option(h, h));
+                endHour.add(new Option(h, h));
+            });
+            minutes.forEach(m => {
+                startMinute.add(new Option(m, m));
+                endMinute.add(new Option(m, m));
+            });
+        }
+        
+        // 기본시간 설정 (오전 08:30 ~ 오후 06:00)
+        function setDefaultTime() {
+            document.getElementById('startAmPm').value = '오전';
+            document.getElementById('startHour').value = '08';
+            document.getElementById('startMinute').value = '30';
+            
+            document.getElementById('endAmPm').value = '오후';
+            document.getElementById('endHour').value = '06';
+            document.getElementById('endMinute').value = '00';
         }
 
-        // 함수 실행 (시작은 08:30, 끝은 18:00 기본값 설정)
-        generateTimeOptions('startTime', '08:30');
-        generateTimeOptions('endTime', '18:00');
+        populateTimeSelects();
+        setDefaultTime();
 
         window.login = () => {
             const pw = document.getElementById('loginPw').value;
@@ -193,24 +211,32 @@
         themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
             if (document.body.classList.contains('dark-mode')) {
-                themeBtn.textContent = '라이트모드';
+                themeBtn.textContent = '☀️ 라이트모드';
             } else {
-                themeBtn.textContent = '다크모드';
+                themeBtn.textContent = '🌙 다크모드';
             }
         });
 
+        // 저장(확인) 버튼 동작
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const date = document.getElementById('workDate').value;
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
             const content = document.getElementById('workContent').value;
+            
+            // 분리된 시간 값들을 하나로 조합하여 보기 좋게 묶음
+            const stAmPm = document.getElementById('startAmPm').value;
+            const stHr = document.getElementById('startHour').value;
+            const stMin = document.getElementById('startMinute').value;
+            
+            const edAmPm = document.getElementById('endAmPm').value;
+            const edHr = document.getElementById('endHour').value;
+            const edMin = document.getElementById('endMinute').value;
 
-            if(!date || !startTime || !endTime || !content) {
+            if(!date || !content) {
                 alert("모든 내용을 입력해주세요.");
                 return;
             }
 
-            const hours = `${startTime} ~ ${endTime}`;
+            const hours = `${stAmPm} ${stHr}:${stMin} ~ ${edAmPm} ${edHr}:${edMin}`;
 
             try {
                 if (currentEditId) {
@@ -263,14 +289,49 @@
             });
         }
 
+        // 기존 데이터를 안전하게 파싱하여 3칸에 나누어 채워넣는 함수 (과거 데이터 호환성 보장)
+        function parseAndSetTime(timeStr, type) {
+            let ampm = '오전';
+            let hr = '08';
+            let min = '00';
+            
+            if (timeStr.includes('오전') || timeStr.includes('오후')) {
+                const parts = timeStr.split(' ');
+                ampm = parts[0];
+                [hr, min] = parts[1].split(':');
+            } else { // 과거의 "14:30" 형태 데이터인 경우
+                let [h, m] = timeStr.split(':');
+                let hNum = parseInt(h, 10);
+                if (hNum >= 12) {
+                    ampm = '오후';
+                    if (hNum > 12) hNum -= 12;
+                } else {
+                    ampm = '오전';
+                    if (hNum === 0) hNum = 12;
+                }
+                hr = hNum.toString().padStart(2, '0');
+                min = m;
+            }
+            
+            document.getElementById(type + 'AmPm').value = ampm;
+            document.getElementById(type + 'Hour').value = hr;
+            document.getElementById(type + 'Minute').value = min;
+        }
+
         window.editRecord = (id, date, hours, content) => {
             const pw = prompt("수정하려면 비밀번호를 입력하세요.");
             if (pw === '2258') {
                 document.getElementById('workDate').value = date;
-                const [st, et] = hours.split(' ~ ');
-                document.getElementById('startTime').value = st || '08:30';
-                document.getElementById('endTime').value = et || '18:00';
                 document.getElementById('workContent').value = content;
+                
+                // 시간 데이터를 분석하여 각각의 드롭다운에 배치
+                const [stPart, edPart] = hours.split(' ~ ');
+                if (stPart && edPart) {
+                    parseAndSetTime(stPart, 'start');
+                    parseAndSetTime(edPart, 'end');
+                } else {
+                    setDefaultTime();
+                }
 
                 currentEditId = id;
                 document.getElementById('saveBtn').textContent = '수정 완료';
@@ -297,9 +358,7 @@
             document.getElementById('workContent').value = '';
             document.getElementById('workDate').valueAsDate = new Date();
             
-            // 폼 초기화 시 시간도 기본값으로 복귀
-            document.getElementById('startTime').value = '08:30';
-            document.getElementById('endTime').value = '18:00';
+            setDefaultTime();
         }
 
         window.deleteRecord = async (id) => {
