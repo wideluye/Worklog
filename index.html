@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 출결 관리</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .input-section { background: #f4f4f4; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background: #eee; }
+        
+        /* 🔥 핵심: 인쇄 버튼 누를 때 적용되는 스타일 */
+        @media print {
+            .no-print { display: none !important; } /* 입력창, 인쇄버튼, 삭제버튼 숨김 */
+            body { padding: 0; }
+            table { border: 2px solid #000; }
+            th, td { border: 1px solid #000; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 화면에만 보이고 인쇄할 때는 숨겨지는 입력 영역 -->
+    <div class="input-section no-print">
+        <h2>근무 내용 입력</h2>
+        <input type="date" id="workDate">
+        <input type="text" id="workHours" placeholder="근무 시간 (예: 8, 또는 09:00~18:00)">
+        <input type="text" id="workContent" placeholder="예: 폐플라스틱 섬유 혼입 콘크리트 폭렬 특성 분석">
+        <button id="saveBtn" style="background: #28a745; color: white; border: none; cursor: pointer;">확인 (저장)</button>
+        <button onclick="window.print()" style="background: #007bff; color: white; border: none; cursor: pointer;">내역 인쇄하기</button>
+    </div>
+
+    <h2>근무 출결 대장</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>날짜</th>
+                <th>근무 시간</th>
+                <th>근무 내용</th>
+                <!-- 인쇄 시 공란으로 출력될 칸 -->
+                <th style="width: 120px;">연구책임자 확인</th>
+                <th class="no-print">관리</th> <!-- 수정/삭제 버튼 칸 -->
+            </tr>
+        </thead>
+        <tbody id="recordTableBody">
+            <!-- 데이터가 여기에 들어옵니다 -->
+        </tbody>
+    </table>
+
+    <!-- Firebase SDK 로드 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
+        from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // 🚨 1단계에서 받은 본인의 Firebase 설정값으로 아래 내용을 덮어쓰세요!
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
+            authDomain: "practice-34277.firebaseapp.com",
+            projectId: "practice-34277",
+            storageBucket: "practice-34277.firebasestorage.app",
+            messagingSenderId: "997513375348",
+            appId: "1:997513375348:web:a5d1d869ee25dec53feb21"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 데이터 저장 기능
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            const date = document.getElementById('workDate').value;
+            const hours = document.getElementById('workHours').value;
+            const content = document.getElementById('workContent').value;
+
+            if(!date || !hours || !content) {
+                alert("모든 내용을 입력해주세요.");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "workRecords"), {
+                    date: date,
+                    hours: hours,
+                    content: content,
+                    timestamp: new Date()
+                });
+                alert("저장되었습니다!");
+                document.getElementById('workDate').value = '';
+                document.getElementById('workHours').value = '';
+                document.getElementById('workContent').value = '';
+                loadData(); // 저장 후 목록 새로고침
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        });
+
+        // 데이터 불러오기 기능
+        async function loadData() {
+            const q = query(collection(db, "workRecords"), orderBy("date", "desc"));
+            const querySnapshot = await getDocs(q);
+            const tbody = document.getElementById('recordTableBody');
+            tbody.innerHTML = '';
+
+            querySnapshot.forEach((documentSnapshot) => {
+                const data = documentSnapshot.data();
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${data.date}</td>
+                    <td>${data.hours}</td>
+                    <td>${data.content}</td>
+                    <td></td> <!-- 연구책임자 확인란 공란 -->
+                    <td class="no-print">
+                        <button onclick="deleteRecord('${documentSnapshot.id}')">삭제</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 삭제 기능 (글로벌 함수로 만들기 위해 window 객체에 할당)
+        window.deleteRecord = async (id) => {
+            if(confirm("정말 삭제하시겠습니까?")) {
+                await deleteDoc(doc(db, "workRecords", id));
+                loadData();
+            }
+        };
+
+        // 페이지 열릴 때 데이터 최초 로드
+        loadData();
+    </script>
+</body>
+</html>
