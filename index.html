@@ -33,7 +33,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* 3. 로그인 오버레이 화면 스타일 */
         .login-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--bg-color); z-index: 9999;
@@ -49,9 +48,10 @@
         .input-section { background: var(--section-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); }
         
         .time-inputs { display: flex; gap: 10px; margin: 5px 0; }
-        .time-inputs input { flex: 1; }
+        .time-inputs input, .time-inputs select { flex: 1; }
         
-        input, button { 
+        /* select(드롭다운) 디자인 추가 */
+        input, select, button { 
             padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; 
             border: 1px solid var(--border-color); border-radius: 4px;
             background-color: var(--input-bg); color: var(--text-color);
@@ -71,12 +71,11 @@
         th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
         th { background: var(--th-bg); }
         
-        /* 1. 화면에서는 숨기고 인쇄할 때만 보여주는 스타일 */
         .print-only { display: none; }
 
         @media print {
             .no-print { display: none !important; }
-            .print-only { display: table-cell !important; } /* 인쇄 시 셀 표시 */
+            .print-only { display: table-cell !important; }
             body { padding: 0; background-color: white !important; color: black !important; } 
             table { border: 2px solid #000; }
             th, td { border: 1px solid #000; }
@@ -86,7 +85,6 @@
 </head>
 <body>
 
-    <!-- 3. 사이트 접속 비밀번호 입력 화면 -->
     <div id="loginOverlay" class="login-overlay">
         <div class="login-box">
             <h2 style="margin-top:0;">출결 관리 시스템</h2>
@@ -104,17 +102,16 @@
     <div class="input-section no-print">
         <input type="date" id="workDate">
         
-        <!-- 2. 시간 단위를 10분(600초) 단위로 설정 (step="600") -->
+        <!-- 변경: 10분 단위 선택을 강제하는 select 드롭다운으로 교체 -->
         <div class="time-inputs">
-            <input type="time" id="startTime" value="08:30" step="600" title="시작 시간">
+            <select id="startTime" title="시작 시간"></select>
             <span style="display:flex; align-items:center;">~</span>
-            <input type="time" id="endTime" value="18:00" step="600" title="종료 시간">
+            <select id="endTime" title="종료 시간"></select>
         </div>
         
         <input type="text" id="workContent" placeholder="근무 내용">
         
         <button id="saveBtn" class="btn-save">확인 (저장)</button>
-        <!-- 수정 모드일 때 나타나는 취소 버튼 -->
         <button id="cancelEditBtn" class="btn-cancel">수정 취소</button>
         <button onclick="window.print()" class="btn-print">내역 인쇄하기</button>
     </div>
@@ -126,7 +123,6 @@
                 <th>날짜</th>
                 <th>근무 시간</th>
                 <th>근무 내용</th>
-                <!-- 1. 평소엔 숨겨져 있다가 인쇄할 때만 나타나는 열 -->
                 <th class="print-only" style="width: 120px;">연구책임자 확인</th>
                 <th class="no-print">관리</th>
             </tr>
@@ -138,11 +134,10 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        // 4. updateDoc 추가 (수정 기능용)
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // 🚨 여기에 본인의 firebaseConfig 코드를 다시 덮어써주세요!
+        // 알려주신 설정값 완벽 적용
         const firebaseConfig = {
             apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
             authDomain: "practice-34277.firebaseapp.com",
@@ -155,12 +150,35 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 현재 수정 중인 문서의 ID를 저장할 변수
         let currentEditId = null;
 
         document.getElementById('workDate').valueAsDate = new Date();
 
-        // 3. 로그인(비밀번호 2258) 확인 기능
+        // JS 추가: 10분 단위 시간 옵션을 드롭다운에 자동으로 채워주는 함수
+        function generateTimeOptions(selectId, defaultTime) {
+            const selectElement = document.getElementById(selectId);
+            for (let h = 0; h < 24; h++) {
+                for (let m = 0; m < 60; m += 10) {
+                    let hour = h.toString().padStart(2, '0');
+                    let minute = m.toString().padStart(2, '0');
+                    let timeString = `${hour}:${minute}`;
+                    
+                    let option = document.createElement('option');
+                    option.value = timeString;
+                    option.text = timeString;
+                    
+                    if (timeString === defaultTime) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                }
+            }
+        }
+
+        // 함수 실행 (시작은 08:30, 끝은 18:00 기본값 설정)
+        generateTimeOptions('startTime', '08:30');
+        generateTimeOptions('endTime', '18:00');
+
         window.login = () => {
             const pw = document.getElementById('loginPw').value;
             if (pw === '2258') {
@@ -171,7 +189,6 @@
             }
         };
 
-        // 다크모드
         const themeBtn = document.getElementById('themeToggle');
         themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
@@ -182,7 +199,6 @@
             }
         });
 
-        // 4. 데이터 저장 및 수정 기능 병합
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const date = document.getElementById('workDate').value;
             const startTime = document.getElementById('startTime').value;
@@ -198,7 +214,6 @@
 
             try {
                 if (currentEditId) {
-                    // 수정 모드인 경우 (업데이트)
                     const docRef = doc(db, "workRecords", currentEditId);
                     await updateDoc(docRef, {
                         date: date,
@@ -208,7 +223,6 @@
                     alert("성공적으로 수정되었습니다!");
                     resetInputForm();
                 } else {
-                    // 신규 작성인 경우 (저장)
                     await addDoc(collection(db, "workRecords"), {
                         date: date,
                         hours: hours,
@@ -225,7 +239,6 @@
             }
         });
 
-        // 데이터 불러오기 기능
         async function loadData() {
             const q = query(collection(db, "workRecords"), orderBy("date", "desc"));
             const querySnapshot = await getDocs(q);
@@ -240,7 +253,7 @@
                     <td>${data.date}</td>
                     <td>${data.hours}</td>
                     <td>${data.content}</td>
-                    <td class="print-only"></td> <!-- 인쇄 시에만 표시되는 공란 -->
+                    <td class="print-only"></td>
                     <td class="no-print">
                         <button class="btn-edit" onclick="editRecord('${documentSnapshot.id}', '${data.date}', '${data.hours}', '${data.content}')">수정</button>
                         <button class="btn-delete" onclick="deleteRecord('${documentSnapshot.id}')">삭제</button>
@@ -250,11 +263,9 @@
             });
         }
 
-        // 4, 5. 수정 모드 진입 (비밀번호 확인)
         window.editRecord = (id, date, hours, content) => {
             const pw = prompt("수정하려면 비밀번호를 입력하세요.");
             if (pw === '2258') {
-                // 기존 데이터를 입력창으로 불러오기
                 document.getElementById('workDate').value = date;
                 const [st, et] = hours.split(' ~ ');
                 document.getElementById('startTime').value = st || '08:30';
@@ -265,20 +276,18 @@
                 document.getElementById('saveBtn').textContent = '수정 완료';
                 document.getElementById('saveBtn').style.background = '#ffc107';
                 document.getElementById('saveBtn').style.color = 'black';
-                document.getElementById('cancelEditBtn').style.display = 'block'; // 취소 버튼 표시
+                document.getElementById('cancelEditBtn').style.display = 'block'; 
                 
-                window.scrollTo(0, 0); // 화면 맨 위로 이동
+                window.scrollTo(0, 0); 
             } else if (pw !== null) {
                 alert("비밀번호가 일치하지 않습니다.");
             }
         };
 
-        // 수정 취소 기능
         document.getElementById('cancelEditBtn').addEventListener('click', () => {
             resetInputForm();
         });
 
-        // 입력 폼 초기화 함수 (수정 완료 및 취소 시 사용)
         function resetInputForm() {
             currentEditId = null;
             document.getElementById('saveBtn').textContent = '확인 (저장)';
@@ -287,9 +296,12 @@
             document.getElementById('cancelEditBtn').style.display = 'none';
             document.getElementById('workContent').value = '';
             document.getElementById('workDate').valueAsDate = new Date();
+            
+            // 폼 초기화 시 시간도 기본값으로 복귀
+            document.getElementById('startTime').value = '08:30';
+            document.getElementById('endTime').value = '18:00';
         }
 
-        // 5. 삭제 기능 (비밀번호 확인)
         window.deleteRecord = async (id) => {
             const pw = prompt("삭제하려면 비밀번호를 입력하세요.");
             if (pw === '2258') {
