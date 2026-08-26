@@ -78,9 +78,11 @@
         }
         input:focus, select:focus { border-color: var(--primary); }
         .time-select-group select { padding: 8px; }
+        input[type="file"] { padding: 8px; background: transparent; border: 1px dashed var(--border-color); cursor: pointer; }
 
         button { cursor: pointer; transition: all 0.2s; font-weight: 500; }
         button:active { transform: scale(0.98); } 
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .btn-save { background: var(--primary); color: white; border: none; }
         .btn-save:hover { background: var(--primary-hover); }
@@ -102,16 +104,25 @@
         th, td { border: 1px solid var(--border-color); padding: 12px 10px; text-align: center; }
         th { background: var(--th-bg); white-space: nowrap; font-weight: 600; }
         
+        .file-link { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.9em; }
+        .file-link:hover { text-decoration: underline; }
+
         .print-only { display: none; }
 
+        /* 인쇄 전용 스타일 */
         @media print {
             .no-print { display: none !important; }
-            .print-only { display: table-cell !important; }
+            .print-only { display: block !important; }
             body { padding: 0; background-color: white !important; color: black !important; } 
             .section-box { border: none; box-shadow: none; padding: 0; margin-bottom: 20px; }
             table { border: 2px solid #000; }
             th, td { border: 1px solid #000; }
             th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
+            
+            /* 인쇄 시 나타나는 서명란 스타일 */
+            .print-signature { margin-top: 50px; text-align: right; font-size: 1.1em; line-height: 2; }
+            .print-signature .date-text { margin-bottom: 20px; margin-right: 20px; }
+            .print-signature .sign-text { font-weight: bold; }
         }
     </style>
 </head>
@@ -142,6 +153,7 @@
         <button id="themeToggle" class="btn-theme">다크모드</button>
     </div>
 
+    <!-- 1. 근무 내역 입력 (가장 위로 이동) -->
     <div class="section-box no-print">
         <h3 class="section-title">근무 내역 입력</h3>
         <input type="date" id="workDate">
@@ -160,15 +172,22 @@
             </div>
         </div>
         
-        <input type="text" id="workContent" placeholder="근무 내용">
+        <input type="text" id="workContent" placeholder="근무 내용 입력 (예: 폐플라스틱 섬유 혼입 실험)">
         
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <div style="margin-top: 15px;">
+            <label style="font-size: 0.9em; font-weight: bold; color: var(--accent); display: block; margin-bottom: 5px;">증빙 서류 첨부 (선택 사항)</label>
+            <div id="currentFileDisplay" style="font-size: 0.85em; color: var(--primary); display: none; margin-bottom: 5px;"></div>
+            <input type="file" id="workFile" accept=".pdf, image/*">
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
             <button id="saveBtn" class="btn-save">확인 (저장)</button>
             <button id="cancelEditBtn" class="btn-cancel">수정 취소</button>
             <button onclick="window.print()" class="btn-print">내역 인쇄하기</button>
         </div>
     </div>
 
+    <!-- 2. 근무 출결 대장 (가운데로 이동) -->
     <div class="section-box" style="padding-top: 10px;">
         <h3 class="section-title no-print" style="margin-top: 15px;">근무 출결 대장</h3>
         <table>
@@ -177,15 +196,23 @@
                     <th>날짜</th>
                     <th>근무 시간</th>
                     <th>근무 내용</th>
-                    <th class="print-only" style="width: 120px;">연구책임자 확인</th>
+                    <th class="no-print">첨부파일</th> <!-- 인쇄 시 안 보임 -->
                     <th class="no-print" style="width: 110px;">관리</th>
                 </tr>
             </thead>
             <tbody id="recordTableBody">
             </tbody>
         </table>
+        
+        <!-- 인쇄 시 나타나는 한 달 치 공통 결재(서명)란 -->
+        <div class="print-signature print-only">
+            <div>위의 근무 내역이 사실임을 확인합니다.</div>
+            <div class="date-text">20&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;일</div>
+            <div class="sign-text">연구책임자 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(서명)</div>
+        </div>
     </div>
-    
+
+    <!-- 3. 월간 출결 현황 (가장 아래로 이동) -->
     <div class="section-box no-print">
         <h3 class="section-title">월간 출결 현황</h3>
         <div class="calendar-header">
@@ -200,6 +227,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, orderBy, query } 
         from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } 
+        from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCQ3AZrepQIANDKjI1yhcqmAjF-2g0U6jc",
@@ -212,10 +241,16 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app); 
 
+        let globalRecords = {}; 
         let currentEditId = null;
         let pendingAction = null; 
         let pendingData = null;   
+        
+        let currentFileUrl = null;
+        let currentFilePath = null;
+        let currentFileName = null;
         
         let calYear = new Date().getFullYear();
         let calMonth = new Date().getMonth(); 
@@ -223,14 +258,12 @@
 
         document.getElementById('workDate').valueAsDate = new Date();
 
-        // 🔐 비밀번호 해싱 검증 함수 (F12를 방어하는 핵심 코드)
         function checkPassword(input) {
             let h = 0;
             for (let i = 0; i < input.length; i++) {
                 h = ((h << 5) - h) + input.charCodeAt(i);
                 h = h & h; 
             }
-            // 비밀번호를 암호화한 결과값인 "177ce3"과 비교합니다.
             return h.toString(16) === "177ce3";
         }
 
@@ -243,23 +276,13 @@
             const startMinute = document.getElementById('startMinute');
             const endMinute = document.getElementById('endMinute');
 
-            hours.forEach(h => {
-                startHour.add(new Option(h, h));
-                endHour.add(new Option(h, h));
-            });
-            minutes.forEach(m => {
-                startMinute.add(new Option(m, m));
-                endMinute.add(new Option(m, m));
-            });
+            hours.forEach(h => { startHour.add(new Option(h, h)); endHour.add(new Option(h, h)); });
+            minutes.forEach(m => { startMinute.add(new Option(m, m)); endMinute.add(new Option(m, m)); });
         }
         
         function setDefaultTime() {
-            document.getElementById('startAmPm').value = '오전';
-            document.getElementById('startHour').value = '08';
-            document.getElementById('startMinute').value = '30';
-            document.getElementById('endAmPm').value = '오후';
-            document.getElementById('endHour').value = '06';
-            document.getElementById('endMinute').value = '00';
+            document.getElementById('startAmPm').value = '오전'; document.getElementById('startHour').value = '08'; document.getElementById('startMinute').value = '30';
+            document.getElementById('endAmPm').value = '오후'; document.getElementById('endHour').value = '06'; document.getElementById('endMinute').value = '00';
         }
 
         populateTimeSelects();
@@ -267,7 +290,6 @@
 
         window.login = () => {
             const pw = document.getElementById('loginPw').value;
-            // 해싱 함수를 통과하는지 검사
             if (checkPassword(pw)) {
                 document.getElementById('loginOverlay').style.display = 'none';
             } else {
@@ -278,21 +300,16 @@
         };
 
         const themeBtn = document.getElementById('themeToggle');
-        const savedTheme = localStorage.getItem('themePref');
-        
-        if (savedTheme === 'dark') {
+        if (localStorage.getItem('themePref') === 'dark') {
             document.body.classList.add('dark-mode');
             themeBtn.textContent = '라이트모드';
         }
-
         themeBtn.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
             if (document.body.classList.contains('dark-mode')) {
-                themeBtn.textContent = '라이트모드';
-                localStorage.setItem('themePref', 'dark');
+                themeBtn.textContent = '라이트모드'; localStorage.setItem('themePref', 'dark');
             } else {
-                themeBtn.textContent = '다크모드';
-                localStorage.setItem('themePref', 'light');
+                themeBtn.textContent = '다크모드'; localStorage.setItem('themePref', 'light');
             }
         });
 
@@ -300,13 +317,8 @@
             const date = document.getElementById('workDate').value;
             const content = document.getElementById('workContent').value;
             
-            const stAmPm = document.getElementById('startAmPm').value;
-            const stHr = document.getElementById('startHour').value;
-            const stMin = document.getElementById('startMinute').value;
-            
-            const edAmPm = document.getElementById('endAmPm').value;
-            const edHr = document.getElementById('endHour').value;
-            const edMin = document.getElementById('endMinute').value;
+            const stAmPm = document.getElementById('startAmPm').value; const stHr = document.getElementById('startHour').value; const stMin = document.getElementById('startMinute').value;
+            const edAmPm = document.getElementById('endAmPm').value; const edHr = document.getElementById('endHour').value; const edMin = document.getElementById('endMinute').value;
 
             if(!date || !content) {
                 alert("모든 내용을 입력해주세요.");
@@ -314,22 +326,53 @@
             }
 
             const hours = `${stAmPm} ${stHr}:${stMin} ~ ${edAmPm} ${edHr}:${edMin}`;
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.textContent = '저장 중...';
+            saveBtn.disabled = true;
 
             try {
+                const fileInput = document.getElementById('workFile');
+                const file = fileInput.files[0];
+                
+                let finalFileUrl = currentFileUrl;
+                let finalFilePath = currentFilePath;
+                let finalFileName = currentFileName;
+
+                if (file) {
+                    if (currentFilePath) {
+                        const oldRef = ref(storage, currentFilePath);
+                        deleteObject(oldRef).catch(e => console.log(e)); 
+                    }
+                    
+                    finalFilePath = 'attachments/' + Date.now() + '_' + file.name;
+                    const storageRef = ref(storage, finalFilePath);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    finalFileUrl = await getDownloadURL(snapshot.ref);
+                    finalFileName = file.name;
+                }
+
+                const recordData = { 
+                    date: date, hours: hours, content: content,
+                    fileUrl: finalFileUrl, filePath: finalFilePath, fileName: finalFileName,
+                    timestamp: new Date()
+                };
+
                 if (currentEditId) {
-                    const docRef = doc(db, "workRecords", currentEditId);
-                    await updateDoc(docRef, { date: date, hours: hours, content: content });
+                    await updateDoc(doc(db, "workRecords", currentEditId), recordData);
                     resetInputForm();
                 } else {
-                    await addDoc(collection(db, "workRecords"), {
-                        date: date, hours: hours, content: content, timestamp: new Date()
-                    });
+                    await addDoc(collection(db, "workRecords"), recordData);
                     document.getElementById('workContent').value = ''; 
+                    document.getElementById('workFile').value = '';
                 }
                 loadData();
             } catch (e) {
                 console.error("저장 오류: ", e);
-                alert("처리 중 오류가 발생했습니다.");
+                alert("처리 중 오류가 발생했습니다. Storage 권한을 확인해주세요.");
+            } finally {
+                saveBtn.textContent = '확인 (저장)';
+                saveBtn.disabled = false;
             }
         });
 
@@ -339,26 +382,33 @@
             const tbody = document.getElementById('recordTableBody');
             tbody.innerHTML = '';
             
+            globalRecords = {}; 
             recordedDates.clear(); 
 
             querySnapshot.forEach((documentSnapshot) => {
                 const data = documentSnapshot.data();
+                const id = documentSnapshot.id;
+                
+                globalRecords[id] = data; 
                 recordedDates.add(data.date); 
                 
+                let fileLinkHtml = data.fileUrl 
+                    ? `<a href="${data.fileUrl}" target="_blank" class="file-link" title="${data.fileName}">💾 다운로드</a>` 
+                    : '<span style="color:var(--border-color);">-</span>';
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${data.date}</td>
                     <td>${data.hours}</td>
                     <td>${data.content}</td>
-                    <td class="print-only"></td>
+                    <td class="no-print">${fileLinkHtml}</td> <!-- 인쇄 시 안 보임 -->
                     <td class="no-print">
-                        <button class="btn-edit" onclick="editRecordBtn('${documentSnapshot.id}', '${data.date}', '${data.hours}', '${data.content}')">수정</button>
-                        <button class="btn-delete" onclick="deleteRecordBtn('${documentSnapshot.id}')">삭제</button>
+                        <button class="btn-edit" onclick="editRecordBtn('${id}')">수정</button>
+                        <button class="btn-delete" onclick="deleteRecordBtn('${id}')">삭제</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
-            
             renderCalendar(); 
         }
 
@@ -369,152 +419,119 @@
 
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             days.forEach(d => {
-                let div = document.createElement('div');
-                div.className = 'cal-day-header';
-                div.textContent = d;
-                grid.appendChild(div);
+                let div = document.createElement('div'); div.className = 'cal-day-header'; div.textContent = d; grid.appendChild(div);
             });
 
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
             for (let i = 0; i < firstDay; i++) {
-                let div = document.createElement('div');
-                div.className = 'cal-day empty';
-                grid.appendChild(div);
+                let div = document.createElement('div'); div.className = 'cal-day empty'; grid.appendChild(div);
             }
 
             for (let i = 1; i <= daysInMonth; i++) {
-                let div = document.createElement('div');
-                div.className = 'cal-day';
-                div.textContent = i;
-
-                let checkMonth = String(calMonth + 1).padStart(2, '0');
-                let checkDay = String(i).padStart(2, '0');
+                let div = document.createElement('div'); div.className = 'cal-day'; div.textContent = i;
+                let checkMonth = String(calMonth + 1).padStart(2, '0'); let checkDay = String(i).padStart(2, '0');
                 let fullDate = `${calYear}-${checkMonth}-${checkDay}`;
 
-                if (recordedDates.has(fullDate)) {
-                    div.classList.add('recorded');
-                }
-
+                if (recordedDates.has(fullDate)) div.classList.add('recorded');
                 grid.appendChild(div);
             }
         }
 
-        document.getElementById('prevMonthBtn').addEventListener('click', () => {
-            calMonth--;
-            if (calMonth < 0) { calMonth = 11; calYear--; }
-            renderCalendar();
-        });
-        document.getElementById('nextMonthBtn').addEventListener('click', () => {
-            calMonth++;
-            if (calMonth > 11) { calMonth = 0; calYear++; }
-            renderCalendar();
-        });
+        document.getElementById('prevMonthBtn').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
+        document.getElementById('nextMonthBtn').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
 
-        window.editRecordBtn = (id, date, hours, content) => {
-            pendingAction = 'edit';
-            pendingData = { id, date, hours, content };
+        window.editRecordBtn = (id) => {
+            pendingAction = 'edit'; pendingData = id;
             document.getElementById('actionPwTitle').textContent = '수정 비밀번호';
-            document.getElementById('actionPwInput').value = '';
-            document.getElementById('actionPwOverlay').style.display = 'flex';
-            document.getElementById('actionPwInput').focus();
+            document.getElementById('actionPwInput').value = ''; document.getElementById('actionPwOverlay').style.display = 'flex'; document.getElementById('actionPwInput').focus();
         };
 
         window.deleteRecordBtn = (id) => {
-            pendingAction = 'delete';
-            pendingData = id;
+            pendingAction = 'delete'; pendingData = id;
             document.getElementById('actionPwTitle').textContent = '삭제 비밀번호';
-            document.getElementById('actionPwInput').value = '';
-            document.getElementById('actionPwOverlay').style.display = 'flex';
-            document.getElementById('actionPwInput').focus();
+            document.getElementById('actionPwInput').value = ''; document.getElementById('actionPwOverlay').style.display = 'flex'; document.getElementById('actionPwInput').focus();
         };
 
-        window.closeActionPw = () => {
-            document.getElementById('actionPwOverlay').style.display = 'none';
-            pendingAction = null;
-            pendingData = null;
-        };
+        window.closeActionPw = () => { document.getElementById('actionPwOverlay').style.display = 'none'; pendingAction = null; pendingData = null; };
 
         window.confirmActionPw = async () => {
             const pw = document.getElementById('actionPwInput').value;
-            // 수정/삭제 시에도 해싱 함수를 통해 검사
             if (checkPassword(pw)) {
-                const actionToPerform = pendingAction;
-                const dataToProcess = pendingData;
+                const actionToPerform = pendingAction; const targetId = pendingData;
                 closeActionPw(); 
                 
                 if (actionToPerform === 'edit') {
-                    executeEdit(dataToProcess);
+                    executeEdit(targetId);
                 } else if (actionToPerform === 'delete') {
-                    await executeDelete(dataToProcess);
+                    await executeDelete(targetId);
                 }
             } else {
-                alert("비밀번호가 일치하지 않습니다.");
-                document.getElementById('actionPwInput').value = '';
-                document.getElementById('actionPwInput').focus();
+                alert("비밀번호가 일치하지 않습니다."); document.getElementById('actionPwInput').value = ''; document.getElementById('actionPwInput').focus();
             }
         };
 
-        function executeEdit(data) {
+        function executeEdit(id) {
+            const data = globalRecords[id];
+            if(!data) return;
+
             document.getElementById('workDate').value = data.date;
             document.getElementById('workContent').value = data.content;
             
             const [stPart, edPart] = data.hours.split(' ~ ');
-            if (stPart && edPart) {
-                parseAndSetTime(stPart, 'start');
-                parseAndSetTime(edPart, 'end');
+            if (stPart && edPart) { parseAndSetTime(stPart, 'start'); parseAndSetTime(edPart, 'end'); } else { setDefaultTime(); }
+
+            currentFileUrl = data.fileUrl || null;
+            currentFilePath = data.filePath || null;
+            currentFileName = data.fileName || null;
+            
+            const fileDisp = document.getElementById('currentFileDisplay');
+            if (currentFileUrl) {
+                fileDisp.style.display = 'block';
+                fileDisp.innerHTML = `현재 파일: <a href="${currentFileUrl}" target="_blank">${currentFileName}</a> (새 파일 업로드 시 교체됨)`;
             } else {
-                setDefaultTime();
+                fileDisp.style.display = 'none';
             }
 
-            currentEditId = data.id;
+            currentEditId = id;
             document.getElementById('saveBtn').textContent = '수정 완료';
             document.getElementById('cancelEditBtn').style.display = 'block'; 
             window.scrollTo(0, 0); 
         }
 
         function parseAndSetTime(timeStr, type) {
-            let ampm = '오전';
-            let hr = '08';
-            let min = '00';
-            
+            let ampm = '오전'; let hr = '08'; let min = '00';
             if (timeStr.includes('오전') || timeStr.includes('오후')) {
-                const parts = timeStr.split(' ');
-                ampm = parts[0];
-                [hr, min] = parts[1].split(':');
+                const parts = timeStr.split(' '); ampm = parts[0]; [hr, min] = parts[1].split(':');
             } else { 
-                let [h, m] = timeStr.split(':');
-                let hNum = parseInt(h, 10);
-                if (hNum >= 12) {
-                    ampm = '오후';
-                    if (hNum > 12) hNum -= 12;
-                } else {
-                    ampm = '오전';
-                    if (hNum === 0) hNum = 12;
-                }
-                hr = hNum.toString().padStart(2, '0');
-                min = m;
+                let [h, m] = timeStr.split(':'); let hNum = parseInt(h, 10);
+                if (hNum >= 12) { ampm = '오후'; if (hNum > 12) hNum -= 12; } else { ampm = '오전'; if (hNum === 0) hNum = 12; }
+                hr = hNum.toString().padStart(2, '0'); min = m;
             }
-            
-            document.getElementById(type + 'AmPm').value = ampm;
-            document.getElementById(type + 'Hour').value = hr;
-            document.getElementById(type + 'Minute').value = min;
+            document.getElementById(type + 'AmPm').value = ampm; document.getElementById(type + 'Hour').value = hr; document.getElementById(type + 'Minute').value = min;
         }
 
         async function executeDelete(id) {
+            const data = globalRecords[id];
             if(confirm("정말 삭제하시겠습니까?")) {
+                if (data && data.filePath) {
+                    const fileRef = ref(storage, data.filePath);
+                    await deleteObject(fileRef).catch(e => console.log("파일 삭제 생략:", e));
+                }
                 await deleteDoc(doc(db, "workRecords", id));
                 loadData();
             }
         }
 
-        document.getElementById('cancelEditBtn').addEventListener('click', () => {
-            resetInputForm();
-        });
+        document.getElementById('cancelEditBtn').addEventListener('click', () => { resetInputForm(); });
 
         function resetInputForm() {
             currentEditId = null;
+            currentFileUrl = null; currentFilePath = null; currentFileName = null;
+            document.getElementById('currentFileDisplay').style.display = 'none';
+            document.getElementById('workFile').value = '';
+            
             document.getElementById('saveBtn').textContent = '확인 (저장)';
             document.getElementById('cancelEditBtn').style.display = 'none';
             document.getElementById('workContent').value = '';
